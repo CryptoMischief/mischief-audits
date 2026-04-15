@@ -12,6 +12,8 @@ Significant improvements. The frontend got a proper rewrite with shared utilitie
 
 However, **several critical Phase 2 findings remain unfixed** (quote/build race condition, abort signals, in-place state mutations), and new issues were introduced (dead RouteDialog wiring, division-by-zero in split routes, build artifacts re-committed). The workers `setInterval` leak has been flagged across three consecutive audits and still isn't fixed.
 
+> **UPDATE April 15, 2026:** All 30 frontend findings (2 critical, 6 high, 12 medium, 10 low) have been **fixed and deployed** to the Dev branch in commit `c2f49e1`, live on test-dex.suidex.org. Consolidated audit with fix status pushed to their repo as `MISCHIEF_AUDIT_PHASE2.md`. 29 backend/infra/security findings remain open for their team.
+
 ---
 
 ## Phase 2 Finding Resolution Status
