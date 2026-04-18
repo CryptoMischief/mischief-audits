@@ -253,12 +253,15 @@ Existing audit report: [SUITRUMP_V3_CLMM_AUDIT.md](./SUITRUMP_V3_CLMM_AUDIT.md)
 | M-6 | MEDIUM | Unbounded table growth | **FIXED** — 90-day retention cleanup in indexer |
 | M-7 | MEDIUM | Error message leaks | **FIXED** — Custom error handler |
 | M-8 | MEDIUM | API on 0.0.0.0 no auth | **FIXED** — Secret-based auth on all routes |
+| L-3 | LOW | No duplicate pool prevention | **MITIGATED** — Pool allowlist with auto-approve + admin dashboard |
 | L-6 | LOW | Substring event filter | **FIXED** — `startsWith()` prefix match |
 | L-7 | LOW | No graceful shutdown | **FIXED** — SIGTERM/SIGINT handlers |
 | L-8 | LOW | Indexer cursor not crash-safe | **FIXED** — Unique index + ON CONFLICT |
 | I-4 | INFO | SELECT * | **FIXED** — Explicit column list |
 
 **Remaining open items:**
-1. Transfer admin to multi-sig (H-2, M-1)
+1. Transfer admin to multi-sig (H-2, M-1) — PLANNED
 2. Change default DB password (L-9)
 3. Event data type-checking before DB insert
+
+**Summary:** 17 of 25 findings resolved. 3 accepted (immutable contract, low risk). 2 planned (multi-sig). 3 minor items remaining.

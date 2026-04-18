@@ -172,6 +172,13 @@ Uniswap V3 governance can only choose from pre-defined fee tiers. Here the admin
 
 **Recommendation:** Enforce uniqueness at the API/frontend level.
 
+**Status: MITIGATED (2026-04-18)**
+- Pool allowlist: `approved` column on `v3_pools` table. Only approved pools are served by API and used in routing.
+- Auto-approve: first pool per pair+fee tier is auto-approved. Duplicates are indexed but flagged `approved=false`.
+- Admin endpoints: `/v3/admin/pools` (list all), `/v3/admin/pools/:id/approve` (approve/reject).
+- Admin dashboard: V3 Pools tab on suitrump.com/analytics for review and approve/reject.
+- Anyone can still create duplicate pools on-chain, but they are invisible to the frontend and router until manually approved.
+
 ---
 
 ### [L-4] Reward Rounding Dust Accumulation
@@ -420,6 +427,7 @@ The package is deployed as **IMMUTABLE** (`0xb5f529c1dcda6580a61bf7ee9fbd524b50b
 9. ~~**Block add-liquidity on uninitialized pools** — mitigates M-4~~ **MITIGATED 2026-04-18** (build-add rejects sqrt_price=0)
 10. ~~**Add swap table retention** — fixes M-6~~ **FIXED 2026-04-18** (90-day cleanup in indexer)
 11. ~~**Add API auth** — fixes M-8~~ **FIXED 2026-04-18** (secret-based auth on all routes)
+12. ~~**Pool allowlist to prevent duplicates** — mitigates L-3~~ **MITIGATED 2026-04-18** (auto-approve first, flag duplicates, admin dashboard)
 
 ---
 
@@ -451,3 +459,12 @@ The package is deployed as **IMMUTABLE** (`0xb5f529c1dcda6580a61bf7ee9fbd524b50b
 
 **Deployed:** VPS v3-api (21) and v3-indexer (22) restarted. Frontend on dev-suitrump.vercel.app.
 **Verified:** `curl http://207.180.220.217:3850/v3/pools` → 403. With `?secret=...` → data returned. `/health` → OK without secret.
+
+### 2026-04-18 — L-3 Pool Allowlist (commit ba1ae4b API, 0d2f5a7 frontend)
+
+| Finding | Fix |
+|---------|-----|
+| L-3: No duplicate pool prevention | **MITIGATED** — `approved` column on `v3_pools`. First pool per pair+fee auto-approved, duplicates flagged. Admin endpoints for review. V3 Pools tab on analytics dashboard. |
+
+**Deployed:** VPS v3-api (21) and v3-indexer (22) restarted. Frontend on suitrump.com (prod).
+**Verified:** Existing SUI/SUITRUMP pool approved. `/v3/admin/pools` returns all pools with status. Public `/v3/pools` only returns approved.
