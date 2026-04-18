@@ -13,11 +13,11 @@
 
 ## Executive Summary
 
-SuiDex V3 is a Uniswap V3-style concentrated liquidity market maker (CLMM) on Sui, forked from Cetus CLMM with SuiDex-specific additions: protocol fee controls, trading toggle, flash loans, min tick range enforcement, and an ACL admin layer.
+SuiDex V3 is a Uniswap V3-style concentrated liquidity market maker (CLMM) on Sui, forked from Momentum (Turbos) with SuiDex-specific additions: protocol fee controls, trading toggle, flash loans, min tick range enforcement, and an ACL admin layer.
 
 **Overall Risk: MEDIUM.** No critical fund-drain vulnerabilities were found. The package is deployed as immutable, meaning contract bugs cannot be patched but also cannot be exploited via upgrade attacks. The main risks are admin centralization (pause can freeze LP funds) and one edge-case division-by-zero in flash loan repayment when pool liquidity is zero.
 
-**Math correctness: VERIFIED.** All core math (tick_math, sqrt_price_math, swap_math, liquidity_math) matches the Uniswap V3 / Cetus reference implementations. The integer-mate library is mature and correctly implements signed integer arithmetic.
+**Math correctness: VERIFIED.** All core math (tick_math, sqrt_price_math, swap_math, liquidity_math) matches the Uniswap V3 / Momentum reference implementations. The integer-mate library is mature and correctly implements signed integer arithmetic.
 
 ---
 
@@ -331,7 +331,7 @@ All npm dependencies are recent with no known critical vulnerabilities.
 ## Part C: Math Verification
 
 ### tick_math.move — CORRECT
-- Constants match Cetus/Uniswap V3 reference
+- Constants match Momentum/Uniswap V3 reference
 - Tick range [-443636, 443636] correct
 - Min/max sqrt_price (4295048016, 79226673515401279992447579055) correct for Q64.64
 - `get_tick_at_sqrt_price` uses standard logarithmic binary search

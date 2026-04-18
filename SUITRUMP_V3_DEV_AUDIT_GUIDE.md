@@ -208,7 +208,7 @@ sui move build
 5. **Admin powers** — what can admin do? Can they steal funds?
 
 **Lower priority** (well-tested math libraries):
-- Integer arithmetic (forked from battle-tested Cetus code)
+- Integer arithmetic (forked from battle-tested Momentum code)
 - Tick math constants (copied from Uniswap V3)
 
 ---
@@ -216,8 +216,8 @@ sui move build
 ## Reference Implementations
 
 - [Uniswap V3 Core](https://github.com/Uniswap/v3-core) — original Solidity implementation
-- [Cetus CLMM](https://github.com/CetusProtocol/cetus-clmm-sui) — Sui Move implementation this is forked from
-- [Momentum](https://github.com/turbos-finance/momentum-protocol) — another Sui CLMM for comparison
+- [Momentum](https://github.com/turbos-finance/momentum-protocol) — Sui Move CLMM this is forked from
+- [Cetus CLMM](https://github.com/CetusProtocol/cetus-clmm-sui) — another Sui CLMM for comparison
 
 ---
 
