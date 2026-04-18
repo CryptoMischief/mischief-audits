@@ -55,6 +55,12 @@ if (liquidity > 0) {
 
 **Note:** Package is immutable — this cannot be patched on-chain. Mitigate via frontend/API by rejecting flash loans when pool liquidity is dangerously low.
 
+**Status: MITIGATED (2026-04-18)**
+- Quote router skips V3 when `v3State.liquidity === 0n` — swaps never routed to empty pools
+- `/api/v3/build-swap` fetches live pool state and returns 400 if `liquidity === 0`
+- `quoteV3Fast` (split optimizer) already had `liquidity === 0n` early return
+- Three-layer defense: quote → build-swap → on-chain abort
+
 ---
 
 ### [H-2] Admin Pause Freezes LP Withdrawals and Fee Collection
@@ -126,6 +132,10 @@ Uniswap V3 governance can only choose from pre-defined fee tiers. Here the admin
 **Impact:** Loss of funds for users who add liquidity to an uninitialized pool.
 
 **Recommendation:** Package is immutable. Mitigate via frontend/API by checking pool initialization status before allowing liquidity operations.
+
+**Status: MITIGATED (2026-04-18)**
+- `/api/v3/build-add` fetches live pool state and returns 400 `"Pool is not initialized"` if `sqrt_price === 0n`
+- Users cannot add liquidity to uninitialized pools through the frontend
 
 ---
 
@@ -245,6 +255,8 @@ u64 protocol_fee counter could theoretically overflow at > 18.4 quintillion unit
 
 **Recommendation:** Add time-based partitioning or periodic cleanup. Implement cursor pagination.
 
+**Status: FIXED (2026-04-18)** — Indexer runs daily cleanup, deletes `v3_swaps` and `v3_liquidity_events` older than 90 days.
+
 ---
 
 ### [M-7] Error Messages Leak Internal Details
@@ -266,6 +278,8 @@ u64 protocol_fee counter could theoretically overflow at > 18.4 quintillion unit
 **Description:** API binds to all interfaces. No authentication. CORS only blocks browser cross-origin requests, not direct HTTP.
 
 **Recommendation:** Bind to 127.0.0.1 if internal-only, or document as intentionally public.
+
+**Status: FIXED (2026-04-18)** — All routes (except `/health`) require `?secret=` query parameter. Matches existing burn-proxy/positions-proxy auth pattern. Vercel proxy appends secret server-side — never exposed to browser.
 
 ---
 
@@ -395,14 +409,17 @@ The package is deployed as **IMMUTABLE** (`0xb5f529c1dcda6580a61bf7ee9fbd524b50b
 
 ## Recommendations (Priority Order)
 
-1. **Transfer admin to multi-sig** — mitigates H-2, M-1
+1. **Transfer admin to multi-sig** — mitigates H-2, M-1 (PLANNED)
 2. ~~**Add rate limiting to API** — fixes H-3~~ **FIXED 2026-04-18** (commit 79367c9)
 3. **Never use pause()** — use toggle_trading for emergencies (mitigates H-2)
-4. **Frontend: block flash loans at low liquidity** — mitigates H-1
+4. ~~**Frontend: block flash loans at low liquidity** — mitigates H-1~~ **MITIGATED 2026-04-18** (3-layer guard: quote + build-swap + fast-quote)
 5. ~~**API input validation** — fixes M-5~~ **FIXED 2026-04-18** (commit 79367c9)
 6. ~~**Add ON CONFLICT to swap inserts** — fixes L-8~~ **FIXED 2026-04-18** (commit 79367c9)
 7. **Document trust assumptions** — H-2, M-1 for users
 8. ~~**Tighten event filter** — fixes L-6~~ **FIXED 2026-04-18** (commit 79367c9)
+9. ~~**Block add-liquidity on uninitialized pools** — mitigates M-4~~ **MITIGATED 2026-04-18** (build-add rejects sqrt_price=0)
+10. ~~**Add swap table retention** — fixes M-6~~ **FIXED 2026-04-18** (90-day cleanup in indexer)
+11. ~~**Add API auth** — fixes M-8~~ **FIXED 2026-04-18** (secret-based auth on all routes)
 
 ---
 
@@ -422,3 +439,15 @@ The package is deployed as **IMMUTABLE** (`0xb5f529c1dcda6580a61bf7ee9fbd524b50b
 
 **Deployed:** VPS 207.180.220.217, PM2 processes `v3-api` (21) and `v3-indexer` (22)
 **Verified:** Input validation returns 400 for invalid IDs, rate limiting active, no stack trace leaks
+
+### 2026-04-18 — H-1 Mitigation + M-4/M-6/M-8 Fixes (commit f9264a7 API, cec8a1f frontend)
+
+| Finding | Fix |
+|---------|-----|
+| H-1: Flash loan div-by-zero at zero liquidity | **MITIGATED** — Quote router skips V3 when `liquidity === 0n`. Build-swap endpoint fetches live pool state and rejects with 400. Three-layer defense prevents users from ever hitting the on-chain bug. |
+| M-4: Pool shared before initialization | **MITIGATED** — `/api/v3/build-add` checks `sqrt_price !== 0` before building add-liquidity PTB. Returns 400 `"Pool is not initialized"`. |
+| M-6: Unbounded swap table growth | **FIXED** — Indexer runs daily cleanup, deletes `v3_swaps` and `v3_liquidity_events` older than 90 days. |
+| M-8: API on 0.0.0.0 without auth | **FIXED** — All routes (except `/health`) require `?secret=` query parameter. Vercel proxy appends secret server-side. Direct requests without secret receive 403. |
+
+**Deployed:** VPS v3-api (21) and v3-indexer (22) restarted. Frontend on dev-suitrump.vercel.app.
+**Verified:** `curl http://207.180.220.217:3850/v3/pools` → 403. With `?secret=...` → data returned. `/health` → OK without secret.

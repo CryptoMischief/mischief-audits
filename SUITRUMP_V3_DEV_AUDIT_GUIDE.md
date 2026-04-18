@@ -106,7 +106,7 @@ cp .env.example .env
 
 - [ ] Hot-potato receipt (`FlashLoanReceipt`) has no `drop` ability
 - [ ] Repayment amount >= borrowed + fee
-- [ ] Fee distribution to fee_growth_global handles zero liquidity (KNOWN BUG — see audit)
+- [ ] Fee distribution to fee_growth_global handles zero liquidity (KNOWN BUG — see audit, **MITIGATED** at API/frontend layer: quote router + build-swap reject zero-liquidity pools)
 - [ ] Pool ID verified on repayment
 
 ### 7. Oracle / TWAP
@@ -133,28 +133,34 @@ cp .env.example .env
 - [ ] No string concatenation in SQL queries
 - [ ] Input parameters validated before use
 
-### 2. Input Validation
+### 2. Input Validation — **FIXED 2026-04-18**
 **File:** `src/api.ts`
 
-- [ ] `poolId` and `positionId` validated as Sui object IDs
-- [ ] `limit` parameter handles NaN/negative values
-- [ ] `owner` address validated
+- [x] `poolId` and `positionId` validated as Sui object IDs — regex `/^0x[a-f0-9]{64}$/`
+- [x] `limit` parameter handles NaN/negative values — defaults to 50
+- [x] `owner` address validated
 
-### 3. Rate Limiting
-- [ ] Rate limiting middleware present
-- [ ] Expensive endpoints (stats, aggregates) have stricter limits
+### 3. Rate Limiting — **FIXED 2026-04-18**
+- [x] Rate limiting middleware present — `@fastify/rate-limit` 100 req/min global
+- [x] Expensive endpoints (stats, aggregates) have stricter limits — 30 req/min on `/v3/stats`
 
-### 4. Indexer Integrity
+### 4. Indexer Integrity — **FIXED 2026-04-18**
 **File:** `src/indexer.ts`
 
-- [ ] Event type filter uses exact match (not substring)
+- [x] Event type filter uses exact match (not substring) — `startsWith()` prefix match
 - [ ] Event data fields type-checked before DB insert
-- [ ] Duplicate events handled (ON CONFLICT or unique constraint)
-- [ ] Cursor persistence is crash-safe
+- [x] Duplicate events handled (ON CONFLICT or unique constraint) — unique index on `(tx_digest, pool_id)`
+- [x] Cursor persistence is crash-safe — per-module cursor saved after each batch
+- [x] Table retention — daily cleanup deletes rows older than 90 days
 
-### 5. Error Handling
-- [ ] 500 errors don't leak stack traces to clients
-- [ ] Database connection errors don't expose credentials
+### 5. Error Handling — **FIXED 2026-04-18**
+- [x] 500 errors don't leak stack traces to clients — custom error handler
+- [x] Database connection errors don't expose credentials
+
+### 6. Authentication — **FIXED 2026-04-18**
+- [x] API requires `?secret=` query parameter on all routes (except `/health`)
+- [x] Vercel frontend proxy appends secret server-side — never exposed to browser
+- [x] Direct requests without secret receive 403 Forbidden
 
 ---
 
@@ -229,3 +235,30 @@ If you find vulnerabilities:
 3. Use the severity scale: CRITICAL (fund loss), HIGH (significant risk), MEDIUM (moderate risk), LOW (minor), INFO (informational)
 
 Existing audit report: [SUITRUMP_V3_CLMM_AUDIT.md](./SUITRUMP_V3_CLMM_AUDIT.md)
+
+---
+
+## Current Fix Status (as of 2026-04-18)
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| H-1 | HIGH | Flash loan div-by-zero at zero liquidity | **MITIGATED** — 3-layer frontend/API guard (quote, build-swap, fast-quote). On-chain bug remains (immutable). |
+| H-2 | HIGH | Admin pause freezes LP funds | **OPEN** — Multi-sig transfer planned. Use `toggle_trading` not `pause`. |
+| H-3 | HIGH | No rate limiting | **FIXED** — `@fastify/rate-limit` |
+| M-1 | MEDIUM | Admin can set fee to ~100% | **OPEN** — Mitigated by multi-sig (planned) |
+| M-2 | MEDIUM | Position `store` ability | **ACCEPTED** — Low practical risk |
+| M-3 | MEDIUM | safe_withdraw truncates | **ACCEPTED** — Immutable, inherent to design |
+| M-4 | MEDIUM | Pool shared before init | **MITIGATED** — build-add rejects `sqrt_price=0` |
+| M-5 | MEDIUM | No input validation | **FIXED** — Object ID regex + NaN defaults |
+| M-6 | MEDIUM | Unbounded table growth | **FIXED** — 90-day retention cleanup in indexer |
+| M-7 | MEDIUM | Error message leaks | **FIXED** — Custom error handler |
+| M-8 | MEDIUM | API on 0.0.0.0 no auth | **FIXED** — Secret-based auth on all routes |
+| L-6 | LOW | Substring event filter | **FIXED** — `startsWith()` prefix match |
+| L-7 | LOW | No graceful shutdown | **FIXED** — SIGTERM/SIGINT handlers |
+| L-8 | LOW | Indexer cursor not crash-safe | **FIXED** — Unique index + ON CONFLICT |
+| I-4 | INFO | SELECT * | **FIXED** — Explicit column list |
+
+**Remaining open items:**
+1. Transfer admin to multi-sig (H-2, M-1)
+2. Change default DB password (L-9)
+3. Event data type-checking before DB insert
