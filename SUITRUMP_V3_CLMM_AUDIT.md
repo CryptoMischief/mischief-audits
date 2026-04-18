@@ -396,10 +396,29 @@ The package is deployed as **IMMUTABLE** (`0xb5f529c1dcda6580a61bf7ee9fbd524b50b
 ## Recommendations (Priority Order)
 
 1. **Transfer admin to multi-sig** — mitigates H-2, M-1
-2. **Add rate limiting to API** — fixes H-3
+2. ~~**Add rate limiting to API** — fixes H-3~~ **FIXED 2026-04-18** (commit 79367c9)
 3. **Never use pause()** — use toggle_trading for emergencies (mitigates H-2)
 4. **Frontend: block flash loans at low liquidity** — mitigates H-1
-5. **API input validation** — fixes M-5
-6. **Add ON CONFLICT to swap inserts** — fixes L-8
+5. ~~**API input validation** — fixes M-5~~ **FIXED 2026-04-18** (commit 79367c9)
+6. ~~**Add ON CONFLICT to swap inserts** — fixes L-8~~ **FIXED 2026-04-18** (commit 79367c9)
 7. **Document trust assumptions** — H-2, M-1 for users
-8. **Tighten event filter** — fixes L-6
+8. ~~**Tighten event filter** — fixes L-6~~ **FIXED 2026-04-18** (commit 79367c9)
+
+---
+
+## Fix Log
+
+### 2026-04-18 — API Security Hardening (commit 79367c9)
+
+| Finding | Fix |
+|---------|-----|
+| H-3: No rate limiting | Added `@fastify/rate-limit` — 100 req/min global, 30 req/min on `/v3/stats` |
+| M-5: No input validation | Object IDs validated with `/^0x[a-f0-9]{64}$/`, NaN limit defaults to 50 |
+| M-7: Error leaks | Custom error handler — 500s return generic message, stack traces server-side only |
+| L-6: Substring event filter | Changed to `startsWith(ORIGINAL_PACKAGE_ID)` prefix matching |
+| L-7: No graceful shutdown | SIGTERM/SIGINT handlers close Fastify + PG pool on both API and indexer |
+| L-8: Duplicate swaps | Unique index `idx_v3_swaps_unique(tx_digest, pool_id)` + `ON CONFLICT DO NOTHING` |
+| I-4: SELECT * | Replaced with explicit column list on positions endpoint |
+
+**Deployed:** VPS 207.180.220.217, PM2 processes `v3-api` (21) and `v3-indexer` (22)
+**Verified:** Input validation returns 400 for invalid IDs, rate limiting active, no stack trace leaks
